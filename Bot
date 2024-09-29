@@ -1,0 +1,57 @@
+from yowsup.layers import YowLayerEvent
+from yowsup.layers.network import YowNetworkLayer
+from yowsup.stacks import YowStack
+from yowsup.common import YowConstants
+from yowsup.layers import YowLayerEvent
+from yowsup.layers.auth import YowAuthenticationProtocolLayer
+from yowsup.layers.coder import YowCoderLayer
+from yowsup.layers.network import YowNetworkLayer
+from yowsup.layers.protocol_messages import YowMessagesProtocolLayer
+from yowsup.layers.protocol_receipts import YowReceiptProtocolLayer
+from yowsup.layers.protocol_acks import YowAckProtocolLayer
+from yowsup.layers.protocol_presence import YowPresenceProtocolLayer
+
+class EchoLayer(YowInterfaceLayer):
+    @ProtocolEntityCallback("message")
+    def onMessage(self, messageProtocolEntity):
+        if messageProtocolEntity.getType() == 'text':
+            self.onTextMessage(messageProtocolEntity)
+        elif messageProtocolEntity.getType() == 'media':
+            self.onMediaMessage(messageProtocolEntity)
+
+    @ProtocolEntityCallback("receipt")
+    def onReceipt(self, entity):
+        self.toLower(entity.ack())
+
+    def onTextMessage(self, messageProtocolEntity):
+        # Simplemente responde con el mismo mensaje
+        outgoingMessageProtocolEntity = TextMessageProtocolEntity(
+            messageProtocolEntity.getBody(),
+            to = messageProtocolEntity.getFrom()
+        )
+        self.toLower(outgoingMessageProtocolEntity)
+
+    def onMediaMessage(self, messageProtocolEntity):
+        # Aquí puedes manejar mensajes de medios (imágenes, videos, etc.)
+        pass
+
+# Configuración del stack
+layers = (
+    EchoLayer,
+    YowPresenceProtocolLayer,
+    YowMessagesProtocolLayer,
+    YowReceiptProtocolLayer,
+    YowAckProtocolLayer,
+    YowAuthenticationProtocolLayer,
+    YowCoderLayer,
+    YowNetworkLayer
+)
+
+stack = YowStack(layers)
+stack.setProp(YowAuthenticationProtocolLayer.PROP_CREDENTIALS, ("NUMERO_TELEFONO", "PASSWORD"))
+stack.setProp(YowNetworkLayer.PROP_ENDPOINT, YowConstants.ENDPOINTS[0])
+stack.setProp(YowCoderLayer.PROP_DOMAIN, YowConstants.DOMAIN)
+stack.setProp(YowCoderLayer.PROP_RESOURCE, YowConstants.RESOURCE)
+
+stack.broadcastEvent(YowLayerEvent(YowNetworkLayer.EVENT_STATE_CONNECT))
+stack.loop()
